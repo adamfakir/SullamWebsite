@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/SullamWebsite/static/css/main.e6c13ad2.css",
+    "main.js": "/SullamWebsite/static/js/main.7bddbdd1.js",
+    "index.html": "/SullamWebsite/index.html",
+    "main.e6c13ad2.css.map": "/SullamWebsite/static/css/main.e6c13ad2.css.map",
+    "main.7bddbdd1.js.map": "/SullamWebsite/static/js/main.7bddbdd1.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.7bddbdd1.js"
+  ]
+}
