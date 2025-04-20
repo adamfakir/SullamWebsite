@@ -1,6 +1,6 @@
 // App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import Login from './pages/Login';
 import LeaderboardList from './pages/LeaderboardList';
@@ -29,7 +29,7 @@ export default function App() {
     return (
         <ChakraProvider theme={theme}>
             <UserProvider>
-                <Router basename="/SullamWebsite">
+                <Router>
                     <Routes>
                         <Route path="/" element={<Login />} />
                         <Route path="/leaderboards" element={<LeaderboardList />} />
