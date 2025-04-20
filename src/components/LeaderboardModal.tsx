@@ -117,54 +117,70 @@ export default function LeaderboardModal({
             setViewableIds(new Set());
             setLinkable(false);
         } else if (mode === 'edit' && existing) {
-            // 1️⃣ Basic text fields
-            setName(existing.name || '');
-            setDescription(existing.description || '');
+            const id = idStr(existing._id);
+            axios
+                .get(`${API_BASE}/leaderboard/get/${id}`, { headers: { Authorization: token } })
+                .then((res) => {
+                    const data = res.data;
 
-            // 2️⃣ Times (handle both ISO & BSON date wrapper)
-            const rawStart = existing.start_time?.$date ?? existing.start_time;
-            const rawEnd = existing.end_time?.$date ?? existing.end_time;
-            const parsedStart = rawStart ? new Date(rawStart) : null;
-            const parsedEnd = rawEnd ? new Date(rawEnd) : null;
-            setStartTime(
-                parsedStart instanceof Date && !isNaN(parsedStart.getTime())
-                    ? toLocalDateTimeString(parsedStart)
-                    : ''
-            );
-            setEndTime(
-                parsedEnd instanceof Date && !isNaN(parsedEnd.getTime())
-                    ? toLocalDateTimeString(parsedEnd)
-                    : ''
-            );
+                    // 1️⃣ Basic fields
+                    setName(data.name || '');
+                    setDescription(data.description || '');
 
-            // 3️⃣ Presence map (normalize keys)
-            const p: Record<string, boolean> = {};
-            if (existing.user_presence && typeof existing.user_presence === 'object') {
-                Object.entries(existing.user_presence).forEach(([k, v]: [any, any]) => {
-                    p[idStr(k)] = !!v;
+                    // 2️⃣ Times
+                    const rawStart = data.start_time?.$date ?? data.start_time;
+                    const rawEnd   = data.end_time  ?. $date ?? data.end_time;
+                    const ps = rawStart ? new Date(rawStart) : null;
+                    const pe = rawEnd   ? new Date(rawEnd)   : null;
+                    setStartTime(ps instanceof Date && !isNaN(ps.getTime()) ? toLocalDateTimeString(ps) : '');
+                    setEndTime  (pe instanceof Date && !isNaN(pe.getTime()) ? toLocalDateTimeString(pe) : '');
+
+                    // 3️⃣ Presence map
+                    const pMap: Record<string, boolean> = {};
+                    if (data.user_presence && typeof data.user_presence === 'object') {
+                        Object.entries(data.user_presence).forEach(([k, v]) => {
+                            pMap[idStr(k)] = !!v;
+                        });
+                    }
+                    setPresence(pMap);
+
+                    // 4️⃣ Viewable IDs
+                    const vSet = new Set<string>();
+                    Array.isArray(data.viewable_user_ids) &&
+                    data.viewable_user_ids.forEach((u: any) => vSet.add(idStr(u)));
+                    setViewableIds(vSet);
+
+                    // 5️⃣ Linkable
+                    setLinkable(!!data.linkable);
+
+                    // 6️⃣ Selected IDs from users, orgs, groups
+                    const sel = new Set<string>();
+
+                    // — explicit users
+                    if (Array.isArray(data.target_user_ids)) {
+                        data.target_user_ids.forEach((u: any) => sel.add(idStr(u)));
+                    }
+
+                    // — whole organizations
+                    if (Array.isArray(data.target_organizations)) {
+                        data.target_organizations.forEach((org: string) =>
+                            flattenOrg(org).forEach((uid) => sel.add(uid))
+                        );
+                    }
+
+                    // — specific groups
+                    if (Array.isArray(data.target_groups)) {
+                        data.target_groups.forEach((tg: string) => {
+                            const [org, grp] = tg.split(':');
+                            flattenGroup(org, grp).forEach((uid) => sel.add(uid));
+                        });
+                    }
+
+                    setSelectedIds(sel);
+                })
+                .catch(() => {
+                    toast({ status: 'error', title: 'Failed to load leaderboard' });
                 });
-            }
-            setPresence(p);
-
-            // 4️⃣ Viewable IDs
-            const v = new Set<string>();
-            Array.isArray(existing.viewable_user_ids) &&
-            existing.viewable_user_ids.forEach((uid: any) => v.add(idStr(uid)));
-            setViewableIds(v);
-
-            setLinkable(!!existing.linkable);
-
-            // 5️⃣ Selected IDs – use stored list if present, otherwise derive
-            const sel = new Set<string>();
-            if (Array.isArray(existing.target_user_ids) && existing.target_user_ids.length) {
-                existing.target_user_ids.forEach((i: any) => sel.add(idStr(i)));
-            } else {
-                // fallback → combine explicit target_user_ids + presence keys
-                Array.isArray(existing.target_user_ids) &&
-                existing.target_user_ids.forEach((i: any) => sel.add(idStr(i)));
-                Object.keys(p).forEach((k) => sel.add(k));
-            }
-            setSelectedIds(sel);
         }
     }, [isOpen, mode, existing, token, toast]);
 
@@ -208,10 +224,21 @@ export default function LeaderboardModal({
 
     // flatten helpers
     const flattenOrg = (org: string) =>
-        Object.values(tree[org] || {})
-            .flat()
-            .map((u) => u._id.$oid);
-    const flattenGroup = (org: string, grp: string) => (tree[org]?.[grp] || []).map((u) => u._id.$oid);
+        (orgUsers[org] || []).map((u) => idStr(u._id));
+
+    // replace your fullFlattenGroup helper with this:
+    const flattenGroup = (org: string, grp: string) => {
+        const all = orgUsers[org] || []
+        if (grp === NOT_ASSIGNED) {
+            // everyone who has no groups at all
+            return all
+                .filter(u => (u.organizations?.[org]?.groups || []).length === 0)
+                .map(u => idStr(u._id))
+        }
+        return all
+            .filter(u => (u.organizations?.[org]?.groups || []).includes(grp))
+            .map(u => idStr(u._id))
+    }
 
     // ---------------------------------------------
     //  T O G G L E S

@@ -83,11 +83,12 @@ export default function LeaderboardListPage() {
                 visible.map(async (lb) => {
                     const id = typeof lb._id === 'string' ? lb._id : lb._id.$oid;
                     try {
-                        const res = await axios.get<any[]>(
-                            `${API_BASE}/leaderboard/${id}`,
-                            { headers: { Authorization: token } }
-                        );
-                        return { ...lb, count: res.data.length };
+                        //const res = await axios.get<any[]>(
+                        //    `${API_BASE}/leaderboard/${id}`,
+                       //     { headers: { Authorization: token } }
+                        //);
+                       // return { ...lb, count: res.data.length };
+                        return { ...lb, count: 0 };
                     } catch {
                         return { ...lb, count: 0 };
                     }
@@ -189,7 +190,7 @@ export default function LeaderboardListPage() {
                         variant="outline"
                         onClick={() => {
                             localStorage.removeItem('sulam_token');
-                            window.location.href = '/login';
+                            window.location.href = '/SullamWebsite';
                         }}
                     >
                         Logout
@@ -318,7 +319,7 @@ export default function LeaderboardListPage() {
                 </Text>
 
                 <HStack mt={2} spacing={2} wrap="wrap">
-                    <Tag colorScheme="accent">{lb.count ?? 0} participants</Tag>
+                    {/*<Tag colorScheme="accent">{lb.count ?? 0} participants</Tag>*/}
                     {lb.linkable && <Badge colorScheme="green">Linkable</Badge>}
 
                     {/* ← new: show target_groups */}
