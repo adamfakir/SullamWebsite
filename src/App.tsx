@@ -29,12 +29,12 @@ export default function App() {
     return (
         <ChakraProvider theme={theme}>
             <UserProvider>
-                <Router>
+                <Router basename="/SullamWebsite">
                     <Routes>
-                        <Route path="/SullamWebsite" element={<Login />} />
-                        <Route path="/SullamWebsite/leaderboards" element={<LeaderboardList />} />
-                        <Route path="/SullamWebsite/leaderboard/:id" element={<LeaderboardPage />} />
-                        <Route path="*" element={<Navigate to="/SullamWebsite" />} />
+                        <Route path="/" element={<Login />} />
+                        <Route path="/leaderboards" element={<LeaderboardList />} />
+                        <Route path="/leaderboard/:id" element={<LeaderboardPage />} />
+                        <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Router>
             </UserProvider>
