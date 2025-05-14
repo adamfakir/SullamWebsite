@@ -99,9 +99,25 @@ export default function LeaderboardPage() {
 
     const endTime = leaderboard.end_time ? new Date(Date.parse(leaderboard.end_time)) : null;
     const isValidEndTime = endTime instanceof Date && !isNaN(endTime?.getTime?.());
-
+    const leaderboardEnded = isValidEndTime && Date.now() > endTime.getTime();
     const sortedByOld = [...data].sort((a, b) => b.OldPoints - a.OldPoints);
     const sortedByNew = [...data].sort((a, b) => b.NewPoints - a.NewPoints);
+    //--- total cool stuff
+    const userPresence = leaderboard?.user_presence || {};
+    const presenceCount = Object.keys(userPresence).length || 1;
+
+    const oldTotalPoints = sortedByOld.reduce((sum, u) => sum + u.OldPoints, 0);
+    const oldTotalPages = (oldTotalPoints / 550).toFixed(1);
+    const oldAvgPages = (oldTotalPoints / presenceCount / 550).toFixed(1);
+
+    const newTotalPoints = sortedByNew.reduce((sum, u) => sum + u.NewPoints, 0);
+    const newTotalPages = (newTotalPoints / 550).toFixed(1);
+    const newAvgPages = (newTotalPoints / presenceCount / 550).toFixed(1);
+
+    const totalPointsSum = data.reduce((sum, u) => sum + u.TotalPoints, 0);
+    const totalPages = (totalPointsSum / 550).toFixed(1);
+    const avgPages = (totalPointsSum / presenceCount / 550).toFixed(1);
+    //------
     const top3 = data.slice(0, 3);
     const others = data.slice(3);
     const podiumOrder = [1, 0, 2];
@@ -127,6 +143,16 @@ export default function LeaderboardPage() {
     return (
         <Box p={6}>
             <Heading textAlign="center" mb={2}>{leaderboard.name}</Heading>
+            {leaderboardEnded && (
+                <Text
+                    color="red.600"
+                    fontWeight="semibold"
+                    textAlign="center"
+                    mb={4}
+                >
+                    COMPLETED QADEEM STARS ARE BASED ON TODAY — NOT THE ORIGINAL LEADERBOARD RANGE
+                </Text>
+            )}
             <Flex justify="center" align="center" mb={4}>
                 {isValidEndTime ? (
                     <Countdown date={endTime} renderer={countdownRenderer} />
@@ -135,26 +161,96 @@ export default function LeaderboardPage() {
                 )}
             </Flex>
             <SimpleGrid columns={[1, null, 3]} spacing={6}>
+
                 <Box bg="purple.100" p={4} borderRadius="xl">
-                    <Heading size="md" mb={4} textAlign="center">Old Points</Heading>
+
+                    <Box
+                        bg="purple.300"
+                        px={5}
+                        py={2}
+                        mb={2}
+                        borderRadius="md"
+                        boxShadow="md"
+                        textAlign="center"
+                    >
+                        <Heading size="md" fontWeight={"bold"} color="white"mb={4} textAlign="center">Qadeem Points</Heading>
+                        <Text fontSize="md" color="white">
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {oldTotalPages} pages total
+                            </strong>{' '}
+                            ·{'  '}
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {oldAvgPages} avg
+                            </strong>
+                        </Text>
+                    </Box>
                     <VStack align="stretch">
-                        {sortedByOld.map((u, i) => (
-                            <Box
-                                key={u.user_id}
-                                p={3}
-                                borderRadius="md"
-                                bg={i === 0 ? 'yellow.200' : i === 1 ? 'gray.200' : i === 2 ? 'orange.200' : 'white'}
-                                boxShadow="sm"
-                            >
-                                <Text fontWeight="bold">#{i + 1} {u.full_name}</Text>
-                                <Text>{u.OldPoints}</Text>
-                            </Box>
-                        ))}
+                        {sortedByOld.map((u, i) => {
+
+                            const baseColor = i === 0 ? 'yellow.200' : i === 1 ? 'gray.200' : i === 2 ? 'orange.200' : 'white';
+                            const qadeemStatus = u.QadeemStatus; // true | false | null
+                            const bgColor = qadeemStatus === true ? 'green.300'
+                                : qadeemStatus === false ? baseColor
+                                    : 'gray.100';
+
+                            return (
+                                <Box
+                                    key={u.user_id}
+                                    p={3}
+                                    borderRadius="md"
+                                    bg={bgColor}
+                                    boxShadow="md"
+                                    display="flex"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                >
+                                    <Text fontWeight="bold" textAlign="left">
+                                        #{i + 1} {u.full_name}
+                                        {qadeemStatus === true && <span style={{ color: '#FFD700' }}> ✭</span>}
+                                        {qadeemStatus === null && <span style={{ fontSize: '14px', color: '#666' }}> — </span>}
+                                    </Text>
+                                    <Flex direction="column" align="end">
+                                        <Text>{u.OldPoints}</Text>
+                                        <Text fontSize="sm" color="gray.700">
+                                            ~{(u.OldPoints / 550).toFixed(1)} pages (range: {(u.QadeemRange / 550).toFixed(1)})
+                                        </Text>
+                                    </Flex>
+                                </Box>
+                            );
+                        })}
                     </VStack>
                 </Box>
 
-                <Box bg="green.100" p={6} borderRadius="xl" minH="450px">
-                    <Heading size="md" mb={4} textAlign="center">Total Points Leaderboard</Heading>
+                <Box
+                    bg="green.100"
+                    p={6}
+                    borderRadius="xl"
+                    minH="450px"
+                    className="middle-leaderboard"
+                    sx={{ transform: "scale(1.02)", zIndex: 1 }}
+                >
+
+
+                    <Box
+                        bg="green.300"
+                        px={5}
+                        py={2}
+                        mb={2}
+                        borderRadius="md"
+                        boxShadow="md"
+                        textAlign="center"
+                    >
+                        <Heading size="md" fontWeight={"bold"} color="white"mb={4} textAlign="center">Total Points Leaderboard</Heading>
+                        <Text fontSize="md" color="white">
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {totalPages} pages total
+                            </strong>{' '}
+                            ·{'  '}
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {avgPages} avg
+                            </strong>
+                        </Text>
+                    </Box>
                     <Flex justify="center" align="end" mb={4} gap={4} wrap="wrap">
                         {podiumOrder.map((realIndex, i) => {
                             const u = top3[realIndex];
@@ -204,7 +300,12 @@ export default function LeaderboardPage() {
                                     <Flex justify="space-between">
                                         <Text fontWeight="bold">#{i + 4} {u.full_name}</Text>
                                         <Flex align="center" gap={2}>
-                                            <Text>{u.TotalPoints}</Text>
+                                            <Flex direction="column" align="end">
+                                                <Text>{u.TotalPoints}</Text>
+                                                <Text fontSize="xs" color="gray.700">
+                                                    ~{(u.TotalPoints / 550).toFixed(1)} pages
+                                                </Text>
+                                            </Flex>
                                             {u.direction > 0 && <Text color="green.600">↑</Text>}
                                             {u.direction < 0 && <Text color="red.600">↓</Text>}
                                         </Flex>
@@ -216,7 +317,26 @@ export default function LeaderboardPage() {
                 </Box>
 
                 <Box bg="blue.100" p={4} borderRadius="xl">
-                    <Heading size="md" mb={4} textAlign="center">New Points</Heading>
+                    <Box
+                        bg="blue.300"
+                        px={5}
+                        py={2}
+                        mb={2}
+                        borderRadius="md"
+                        boxShadow="md"
+                        textAlign="center"
+                    >
+                        <Heading size="md" fontWeight={"bold"} color="white"mb={4} textAlign="center">Jadeed Points</Heading>
+                        <Text fontSize="md" color="white">
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {newTotalPages} pages total
+                            </strong>{' '}
+                            ·{'  '}
+                            <strong style={{ fontSize: '1.1rem' }}>
+                                {newAvgPages} avg
+                            </strong>
+                        </Text>
+                    </Box>
                     <VStack align="stretch">
                         {sortedByNew.map((u, i) => (
                             <Box
@@ -226,8 +346,17 @@ export default function LeaderboardPage() {
                                 bg={i === 0 ? 'yellow.200' : i === 1 ? 'gray.200' : i === 2 ? 'orange.200' : 'white'}
                                 boxShadow="sm"
                             >
-                                <Text fontWeight="bold">#{i + 1} {u.full_name}</Text>
-                                <Text>{u.NewPoints}</Text>
+                                <Flex justify="space-between" align="center">
+                                    <Text fontWeight="bold" textAlign="left">
+                                        #{i + 1} {u.full_name}
+                                    </Text>
+                                    <Flex direction="column" align="end">
+                                        <Text>{u.NewPoints}</Text>
+                                        <Text fontSize="sm" color="gray.700">
+                                            ~{(u.NewPoints / 550).toFixed(1)} pages (range: {(u.JadeedRange / 550).toFixed(1)})
+                                        </Text>
+                                    </Flex>
+                                </Flex>
                             </Box>
                         ))}
                     </VStack>
