@@ -225,9 +225,9 @@ export default function LeaderboardPage() {
                     bg="green.100"
                     p={6}
                     borderRadius="xl"
-                    minH="450px"
+                    minH="400px"
                     className="middle-leaderboard"
-                    sx={{ transform: "scale(1.02)", zIndex: 1 }}
+                    sx={{ transform: "scale(1.01)", zIndex: 1 }}
                 >
 
 
@@ -239,6 +239,7 @@ export default function LeaderboardPage() {
                         borderRadius="md"
                         boxShadow="md"
                         textAlign="center"
+
                     >
                         <Heading size="md" fontWeight={"bold"} color="white"mb={4} textAlign="center">Total Points Leaderboard</Heading>
                         <Text fontSize="md" color="white">
