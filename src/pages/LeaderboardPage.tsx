@@ -279,6 +279,9 @@ export default function LeaderboardPage() {
                                     <Text fontWeight="bold" fontSize="lg" noOfLines={1}>#{realIndex + 1}</Text>
                                     <Text fontSize="sm" noOfLines={2}>{u.full_name}</Text>
                                     <Text fontWeight="bold">{u.TotalPoints}</Text>
+                                    <Text fontSize="xs" color="gray.700">
+                                        ~{(u.TotalPoints / 550).toFixed(1)} pages
+                                    </Text>
                                 </MotionBox>
                             );
                         })}
