@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import {
     Box, Text, VStack, Heading, Flex, SimpleGrid, Divider, Spinner,
+    Button, IconButton, HStack, Tooltip, useToast, Grid,
 } from '@chakra-ui/react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Countdown from 'react-countdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserContext } from '../utils/UserContext';
+import { EditIcon, ArrowBackIcon, CopyIcon } from '@chakra-ui/icons';
+import LeaderboardModal from '../components/LeaderboardModal';
 
 const API_BASE = 'https://sulamserverbackend-cd7ib.ondigitalocean.app';
 const REFRESH_INTERVAL = 30 * 1000;
@@ -20,6 +23,9 @@ export default function LeaderboardPage() {
     const [lastRanks, setLastRanks] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [showEdit, setShowEdit] = useState(false);
+    const navigate = useNavigate();
+    const toast = useToast();
 
     const token = localStorage.getItem('sulam_token') || '';
 
@@ -140,26 +146,57 @@ export default function LeaderboardPage() {
         );
     };
 
+    const canEditLeaderboard = () => {
+        if (!user || !leaderboard) return false;
+        const roles = new Set(['teacher', 'rabtteacher', 'admin']);
+        const orgs: string[] = Array.isArray(leaderboard.student_organizations) ? leaderboard.student_organizations : [];
+        for (const org of orgs) {
+            const r = user.organizations?.[org]?.role;
+            if (roles.has(r)) return true;
+        }
+        return false;
+    };
+
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            toast({ status: 'success', title: 'Link copied' });
+        } catch {
+            toast({ status: 'error', title: 'Failed to copy' });
+        }
+    };
+
     return (
         <Box p={6}>
-            <Heading textAlign="center" mb={2}>{leaderboard.name}</Heading>
-            {leaderboardEnded && (
-                <Text
-                    color="red.600"
-                    fontWeight="semibold"
-                    textAlign="center"
-                    mb={4}
-                >
-                    COMPLETED QADEEM STARS ARE BASED ON TODAY — NOT THE ORIGINAL LEADERBOARD RANGE
-                </Text>
-            )}
-            <Flex justify="center" align="center" mb={4}>
-                {isValidEndTime ? (
-                    <Countdown date={endTime} renderer={countdownRenderer} />
-                ) : (
-                    <Text fontSize="xl" color="red.500">Invalid end time</Text>
-                )}
-            </Flex>
+            <Grid templateColumns={["1fr 1fr 1fr", null, "1fr auto 1fr"]} alignItems="center" mb={4} gap={2}>
+                <HStack>
+                    <Tooltip label="Home">
+                        <IconButton aria-label="Home" icon={<ArrowBackIcon />} onClick={() => navigate('/')} />
+                    </Tooltip>
+                </HStack>
+                <VStack spacing={1}>
+                    <Heading textAlign="center">{leaderboard.name}</Heading>
+                    <Flex justify="center" align="center">
+                        {isValidEndTime ? (
+                            <Countdown date={endTime} renderer={countdownRenderer} />
+                        ) : (
+                            <Text fontSize="xl" color="red.500">Invalid end time</Text>
+                        )}
+                    </Flex>
+                </VStack>
+                <HStack justifySelf="end">
+                    <Tooltip label="Copy link">
+                        <IconButton aria-label="Copy link" icon={<CopyIcon />} onClick={handleCopyLink} />
+                    </Tooltip>
+                    {canEditLeaderboard() && (
+                        <Tooltip label="Edit leaderboard">
+                            <IconButton aria-label="Edit" icon={<EditIcon />} onClick={() => setShowEdit(true)} />
+                        </Tooltip>
+                    )}
+                </HStack>
+            </Grid>
+            {/* disclaimer removed as stars are anchored to LB day window */}
+            
             <SimpleGrid columns={[1, null, 3]} spacing={6}>
 
                 <Box bg="purple.100" p={4} borderRadius="xl">
@@ -366,6 +403,18 @@ export default function LeaderboardPage() {
                     </VStack>
                 </Box>
             </SimpleGrid>
+            {showEdit && (
+                <LeaderboardModal
+                    isOpen
+                    mode="edit"
+                    existing={leaderboard}
+                    onClose={() => setShowEdit(false)}
+                    onSuccess={() => {
+                        setShowEdit(false);
+                        fetchData();
+                    }}
+                />
+            )}
         </Box>
     );
 }

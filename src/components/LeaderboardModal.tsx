@@ -297,11 +297,13 @@ export default function LeaderboardModal({
     //  S U B M I T
     // ---------------------------------------------
     const handleSubmit = async () => {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto';
         const body = {
             name,
             description,
             start_time: new Date(startTime).toISOString(),
             end_time: new Date(endTime).toISOString(),
+            timezone,
             target_organizations: Object.keys(tree).filter((org) => flattenOrg(org).every((i) => selectedIds.has(i))),
             target_groups: Object.entries(tree)
                 .flatMap(([org, groups]) =>
