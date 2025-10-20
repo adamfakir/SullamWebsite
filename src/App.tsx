@@ -5,6 +5,7 @@ import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import Login from './pages/Login';
 import LeaderboardList from './pages/LeaderboardList';
 import LeaderboardPage from './pages/LeaderboardPage';
+import ExportData from './pages/ExportData';
 import { UserProvider } from './utils/UserContext';
 
 const theme = extendTheme({
@@ -34,6 +35,7 @@ export default function App() {
                         <Route path="/" element={<Login />} />
                         <Route path="/leaderboards" element={<LeaderboardList />} />
                         <Route path="/leaderboard/:id" element={<LeaderboardPage />} />
+                        <Route path="/export-data" element={<ExportData />} />
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Router>

@@ -176,6 +176,13 @@ export default function LeaderboardListPage() {
             <Stack direction="row" justify="space-between" align="center" mb={4}>
                 <Heading size="lg">Leaderboards</Heading>
                 <Stack direction="row" spacing={3}>
+                    <Button
+                        colorScheme="blue"
+                        variant="outline"
+                        onClick={() => navigate('/export-data')}
+                    >
+                        Export Data
+                    </Button>
                     {canEdit(activeOrg) && (
                         <Button
                             leftIcon={<AddIcon />}
