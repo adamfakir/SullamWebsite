@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/SullamWebsite/static/css/main.e6c13ad2.css",
-    "main.js": "/SullamWebsite/static/js/main.b03839dc.js",
+    "main.js": "/SullamWebsite/static/js/main.d499c356.js",
     "index.html": "/SullamWebsite/index.html",
     "main.e6c13ad2.css.map": "/SullamWebsite/static/css/main.e6c13ad2.css.map",
-    "main.b03839dc.js.map": "/SullamWebsite/static/js/main.b03839dc.js.map"
+    "main.d499c356.js.map": "/SullamWebsite/static/js/main.d499c356.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.b03839dc.js"
+    "static/js/main.d499c356.js"
   ]
 }
