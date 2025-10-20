@@ -39,7 +39,7 @@ const DATA_TYPES = [
     { id: 'tikrar_pages', label: 'Tikrar Pages' },
     { id: 'qadeem_stars', label: 'Qadeem Stars (days completed qadeem)' },
     { id: 'hasanat', label: 'Hasanat' },
-    { id: 'cheques_abrar', label: 'Cheques/Abrar Bank' },
+    { id: 'cheques_abrar', label: 'Cheques (# of sullams to 55)' },
 ];
 
 interface UserObj {
