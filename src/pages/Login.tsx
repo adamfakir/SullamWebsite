@@ -7,41 +7,43 @@ import {
     Text,
     VStack,
     useToast,
+    Spinner,
+    Flex,
 } from "@chakra-ui/react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../utils/UserContext";
-
-const API_BASE = "https://sulamserverbackend-cd7ib.ondigitalocean.app";
+import { BASE_URL } from "../constants/ApiConfig";
 
 export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const { user, setUser } = useContext(UserContext);
+    const { user, setUser, isLoading, logout } = useContext(UserContext);
     const toast = useToast();
     const navigate = useNavigate();
 
+    // Redirect if already authenticated
     useEffect(() => {
-        if (user) {
-            navigate('/leaderboards'); // or whatever page is your homepage
+        if (!isLoading && user) {
+            navigate('/leaderboards');
         }
-        const token = localStorage.getItem("sulam_token");
-        if (!token) return;
+    }, [user, isLoading, navigate]);
 
-        axios
-            .get(`${API_BASE}/user/get_self`, {
-                headers: { Authorization: token },
-            })
-            .then((res) => setUser(res.data))
-            .catch(() => localStorage.removeItem("sulam_token"));
-    }, [setUser,user]);
+    // Show loading spinner while checking authentication
+    if (isLoading) {
+        return (
+            <Flex justify="center" align="center" minH="100vh">
+                <Spinner size="xl" />
+            </Flex>
+        );
+    }
 
     const handleLogin = async () => {
         setLoading(true);
         try {
             const loginRes = await axios.post(
-                `${API_BASE}/user/login`,
+                `${BASE_URL}/user/login`,
                 { email, password },
                 { withCredentials: true }
             );
@@ -49,7 +51,7 @@ export default function Login() {
             const token = loginRes.data.token;
             localStorage.setItem("sulam_token", token);
 
-            const res = await axios.get(`${API_BASE}/user/get_self`, {
+            const res = await axios.get(`${BASE_URL}/user/get_self`, {
                 headers: { Authorization: token },
             });
 

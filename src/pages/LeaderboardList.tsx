@@ -26,9 +26,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../utils/UserContext';
 import LeaderboardModal from '../components/LeaderboardModal';
-
-
-const API_BASE = 'https://sulamserverbackend-cd7ib.ondigitalocean.app';
+import AuthGuard from '../components/AuthGuard';
+import { BASE_URL } from '../constants/ApiConfig';
 
 interface Leaderboard {
     target_groups: any[];
@@ -42,8 +41,8 @@ interface Leaderboard {
     count?: number;
 }
 
-export default function LeaderboardListPage() {
-    const { user } = useContext(UserContext);
+function LeaderboardListPageContent() {
+    const { user, logout } = useContext(UserContext);
     const [boards, setBoards] = useState<Leaderboard[]>([]);
     const [orgs, setOrgs] = useState<string[]>([]);
     const [activeOrg, setActiveOrg] = useState<string>('');
@@ -63,13 +62,18 @@ export default function LeaderboardListPage() {
         try {
             // 1) fetch visible
             const { data: visible } = await axios.get<Leaderboard[]>(
-                `${API_BASE}/leaderboard/visible`,
+                `${BASE_URL}/leaderboard/visible`,
                 { headers: { Authorization: token } }
             );
-            // extract org list
+            // extract org list - only include orgs the user is a member of
             const allOrgs = new Set<string>();
             visible.forEach((lb) => {
-                (lb.student_organizations || []).forEach((o) => allOrgs.add(o));
+                (lb.student_organizations || []).forEach((o) => {
+                    // Only add org if user is a member of it
+                    if (user?.organizations?.[o]) {
+                        allOrgs.add(o);
+                    }
+                });
             });
             setOrgs(Array.from(allOrgs));
             const orgArray = Array.from(allOrgs);
@@ -104,17 +108,24 @@ export default function LeaderboardListPage() {
     }, [token, toast]);
 
     useEffect(() => {
-        if (!user) navigate('/login');
         loadBoards();
-    }, [user, navigate, loadBoards]);
+    }, [loadBoards]);
 
     const getRole = (org: string) => user?.organizations?.[org]?.role || 'member';
     const canEdit = (org: string) =>
         ['teacher', 'rabtteacher', 'admin'].includes(getRole(org));
+    
+    // Check if user has any teacher role across all organizations
+    const hasAnyTeacherRole = () => {
+        if (!user?.organizations) return false;
+        return Object.values(user.organizations).some((org: any) => 
+            ['teacher', 'rabtteacher', 'admin'].includes(org.role)
+        );
+    };
 
     const handleDelete = async (id: string) => {
         try {
-            await axios.delete(`${API_BASE}/leaderboard/${id}/delete`, {
+            await axios.delete(`${BASE_URL}/leaderboard/${id}/delete`, {
                 headers: { Authorization: token },
             });
             setBoards((prev) =>
@@ -183,7 +194,7 @@ export default function LeaderboardListPage() {
                     >
                         Export Data
                     </Button>
-                    {canEdit(activeOrg) && (
+                    {hasAnyTeacherRole() && (
                         <Button
                             leftIcon={<AddIcon />}
                             colorScheme="accent"
@@ -196,8 +207,8 @@ export default function LeaderboardListPage() {
                         colorScheme="red"
                         variant="outline"
                         onClick={() => {
-                            localStorage.removeItem('sulam_token');
-                            window.location.href = '/SullamWebsite';
+                            logout();
+                            navigate('/');
                         }}
                     >
                         Logout
@@ -343,4 +354,12 @@ export default function LeaderboardListPage() {
             </Box>
         );
     }
+}
+
+export default function LeaderboardListPage() {
+    return (
+        <AuthGuard>
+            <LeaderboardListPageContent />
+        </AuthGuard>
+    );
 }

@@ -26,6 +26,7 @@ import {
     useToast,
 } from '@chakra-ui/react';
 import axios from 'axios';
+import { BASE_URL } from '../constants/ApiConfig';
 
 interface UserObj {
     _id: { $oid: string };
@@ -43,7 +44,6 @@ interface Props {
     onSuccess: () => void;
 }
 
-const API_BASE = 'https://sulamserverbackend-cd7ib.ondigitalocean.app';
 const NOT_ASSIGNED = 'Not Assigned';
 
 // helper to format a Date into yyyy-MM-ddThh:mm (local)
@@ -93,7 +93,7 @@ export default function LeaderboardModal({
 
         // fetch all org users
         axios
-            .get<Record<string, UserObj[]>>(`${API_BASE}/user/list_my_org_users`, {
+            .get<Record<string, UserObj[]>>(`${BASE_URL}/user/list_my_org_users`, {
                 headers: { Authorization: token },
             })
             .then((res) => {
@@ -119,7 +119,7 @@ export default function LeaderboardModal({
         } else if (mode === 'edit' && existing) {
             const id = idStr(existing._id);
             axios
-                .get(`${API_BASE}/leaderboard/get/${id}`, { headers: { Authorization: token } })
+                .get(`${BASE_URL}/leaderboard/get/${id}`, { headers: { Authorization: token } })
                 .then((res) => {
                     const data = res.data;
 
@@ -314,21 +314,21 @@ export default function LeaderboardModal({
                             flattenGroup(org, grp).every(i => selectedIds.has(i))
                         )
                         .map(([grp]) => `${org}:${grp}`)
-                ),er_ids: Array.from(selectedIds),
+                ),
+            target_user_ids: Array.from(selectedIds),
             viewable_user_ids: Array.from(viewableIds),
             linkable,
             user_presence: presence,
-            target_user_ids: Array.from(selectedIds),
         };
 
         try {
             if (mode === 'create') {
-                await axios.post(`${API_BASE}/leaderboard/create`, body, {
+                await axios.post(`${BASE_URL}/leaderboard/create`, body, {
                     headers: { Authorization: token },
                 });
             } else if (mode === 'edit' && existing) {
                 const id = idStr(existing._id);
-                await axios.put(`${API_BASE}/leaderboard/${id}/edit`, body, {
+                await axios.put(`${BASE_URL}/leaderboard/${id}/edit`, body, {
                     headers: { Authorization: token },
                 });
             }
