@@ -1,7 +1,7 @@
 {
   "name": "sulam-website",
   "version": "0.1.0",
-  "homepage": "https://adamfakir.github.io/SullamWebsite",
+  "homepage": "https://app.sullam.ca",
   "private": true,
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
