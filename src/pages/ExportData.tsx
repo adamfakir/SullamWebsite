@@ -43,6 +43,7 @@ const DATA_TYPES = [
     { id: 'hasanat', label: 'Hasanat' },
     { id: 'cheques_abrar', label: 'Cheques (# of sullams to 55)' },
     { id: 'alltime_hifz', label: 'Alltime Hifz (total pages excluding preset surahs)', isAdvanced: true },
+    { id: 'weekly_goal', label: 'Weekly Goal (claimgoal/550 pages)', isAdvanced: true },
     { id: 'surah_verse_startday', label: 'Surah+Verse on StartDay', category: 'nov23_parent', isAdvanced: true },
     { id: 'surah_verse_today', label: 'Surah+Verse Today', category: 'nov23_parent', isAdvanced: true },
     { id: 'pages_read_through_new', label: 'Pages Read Through New', category: 'nov23_parent', isAdvanced: true },
