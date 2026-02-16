@@ -113,13 +113,13 @@ function LeaderboardListPageContent() {
 
     const getRole = (org: string) => user?.organizations?.[org]?.role || 'member';
     const canEdit = (org: string) =>
-        ['teacher', 'rabtteacher', 'admin'].includes(getRole(org));
+        ['teacher', 'rabtteacher', 'admin','helper'].includes(getRole(org));
     
     // Check if user has any teacher role across all organizations
     const hasAnyTeacherRole = () => {
         if (!user?.organizations) return false;
         return Object.values(user.organizations).some((org: any) => 
-            ['teacher', 'rabtteacher', 'admin'].includes(org.role)
+            ['teacher', 'rabtteacher', 'admin','helper'].includes(org.role)
         );
     };
 
