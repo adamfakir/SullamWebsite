@@ -10,14 +10,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserContext } from '../utils/UserContext';
 import { EditIcon, ArrowBackIcon, CopyIcon } from '@chakra-ui/icons';
 import LeaderboardModal from '../components/LeaderboardModal';
-
-const API_BASE = 'https://sulamserverbackend-cd7ib.ondigitalocean.app';
+import AuthGuard from '../components/AuthGuard';
+import { BASE_URL } from '../constants/ApiConfig';
 const REFRESH_INTERVAL = 30 * 1000;
 const MotionBox = motion(Box);
 
-export default function LeaderboardPage() {
+function LeaderboardPageContent() {
     const { id } = useParams();
-    const { user, setUser } = useContext(UserContext);
+    const { user } = useContext(UserContext);
     const [data, setData] = useState<any[]>([]);
     const [leaderboard, setLeaderboard] = useState<any>(null);
     const [lastRanks, setLastRanks] = useState<Record<string, number>>({});
@@ -30,30 +30,20 @@ export default function LeaderboardPage() {
     const token = localStorage.getItem('sulam_token') || '';
 
     useEffect(() => {
-        if (token && !user) {
-            axios.get(`${API_BASE}/user/get_self`, {
-                headers: { Authorization: token },
-            })
-                .then((res) => setUser(res.data))
-                .catch(() => localStorage.removeItem('sulam_token'));
-        }
-    }, [user, setUser, token]);
-
-    useEffect(() => {
         if (!id) return;
         fetchData();
         intervalRef.current = setInterval(fetchData, REFRESH_INTERVAL);
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [user, id]);
+    }, [id]);
 
     const fetchData = async () => {
         try {
             const headers = { headers: { Authorization: token } };
             const [scoresRes, metaRes] = await Promise.all([
-                axios.get(`${API_BASE}/leaderboard/${id}`, headers),
-                axios.get(`${API_BASE}/leaderboard/get/${id}`, headers),
+                axios.get(`${BASE_URL}/leaderboard/${id}`, headers),
+                axios.get(`${BASE_URL}/leaderboard/get/${id}`, headers),
             ]);
 
             const leaderboardMeta = metaRes.data//.find((lb: any) =>
@@ -416,5 +406,13 @@ export default function LeaderboardPage() {
                 />
             )}
         </Box>
+    );
+}
+
+export default function LeaderboardPage() {
+    return (
+        <AuthGuard>
+            <LeaderboardPageContent />
+        </AuthGuard>
     );
 }

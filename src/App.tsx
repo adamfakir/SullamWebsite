@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import LeaderboardList from './pages/LeaderboardList';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ExportData from './pages/ExportData';
+import PercentageLeaderboard from './pages/PercentageLeaderboard';
 import { UserProvider } from './utils/UserContext';
 
 const theme = extendTheme({
@@ -36,6 +37,7 @@ export default function App() {
                         <Route path="/leaderboards" element={<LeaderboardList />} />
                         <Route path="/leaderboard/:id" element={<LeaderboardPage />} />
                         <Route path="/export-data" element={<ExportData />} />
+                        <Route path="/percentage-leaderboard" element={<PercentageLeaderboard />} />
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Router>

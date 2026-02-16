@@ -27,10 +27,12 @@ import {
     TableContainer,
 } from '@chakra-ui/react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../utils/UserContext';
+import AuthGuard from '../components/AuthGuard';
 import * as XLSX from 'xlsx';
+import { BASE_URL } from '../constants/ApiConfig';
 
-const API_BASE = 'https://sulamserverbackend-cd7ib.ondigitalocean.app';
 const NOT_ASSIGNED = 'Not Assigned';
 
 const DATA_TYPES = [
@@ -40,6 +42,11 @@ const DATA_TYPES = [
     { id: 'qadeem_stars', label: 'Qadeem Stars (days completed qadeem)' },
     { id: 'hasanat', label: 'Hasanat' },
     { id: 'cheques_abrar', label: 'Cheques (# of sullams to 55)' },
+    { id: 'alltime_hifz', label: 'Alltime Hifz (total pages excluding preset surahs)', isAdvanced: true },
+    { id: 'surah_verse_startday', label: 'Surah+Verse on StartDay', category: 'nov23_parent', isAdvanced: true },
+    { id: 'surah_verse_today', label: 'Surah+Verse Today', category: 'nov23_parent', isAdvanced: true },
+    { id: 'pages_read_through_new', label: 'Pages Read Through New', category: 'nov23_parent', isAdvanced: true },
+    { id: 'total_full_cheque_pages', label: 'Total full cheque pages', category: 'nov23_parent', isAdvanced: true },
 ];
 
 interface UserObj {
@@ -65,10 +72,11 @@ const idStr = (v: any): string => {
     return String(v);
 };
 
-export default function ExportData() {
+function ExportDataContent() {
     const { user } = useContext(UserContext);
     const toast = useToast();
     const token = localStorage.getItem('sulam_token') || '';
+    const navigate = useNavigate();
 
     // Date fields
     const [startTime, setStartTime] = useState('');
@@ -88,6 +96,7 @@ export default function ExportData() {
     
     // Data type selection
     const [selectedDataTypes, setSelectedDataTypes] = useState<Set<string>>(new Set());
+    const [showAdvancedDataTypes, setShowAdvancedDataTypes] = useState(false);
     
     // Loaded data
     const [loadedData, setLoadedData] = useState<any>(null);
@@ -140,7 +149,7 @@ export default function ExportData() {
     useEffect(() => {
         setLoading(true);
         axios
-            .get<Record<string, UserObj[]>>(`${API_BASE}/user/list_my_org_users`, {
+            .get<Record<string, UserObj[]>>(`${BASE_URL}/user/list_my_org_users`, {
                 headers: { Authorization: token },
             })
             .then((res) => {
@@ -159,6 +168,14 @@ export default function ExportData() {
                 setLoading(false);
             });
     }, [token, toast]);
+
+    // Helper to sort group names (Grade 1 before Grade 2, fallback to alpha)
+    const compareGroups = (a: string, b: string) => {
+        const numA = a.match(/\d+/);
+        const numB = b.match(/\d+/);
+        if (numA && numB && numA[0] !== numB[0]) return parseInt(numA[0], 10) - parseInt(numB[0], 10);
+        return a.localeCompare(b);
+    };
 
     // Organize users into tree structure
     const tree = useMemo(() => {
@@ -249,6 +266,25 @@ export default function ExportData() {
         setSelectedDataTypes(s);
     };
 
+    const handleGeneratePercentageLeaderboard = () => {
+        if (selectedIds.size === 0) {
+            toast({ status: 'warning', title: 'Please select at least one student' });
+            return;
+        }
+        if (!startTime || !endTime) {
+            toast({ status: 'warning', title: 'Please select start and end dates' });
+            return;
+        }
+
+        navigate('/percentage-leaderboard', {
+            state: {
+                userIds: Array.from(selectedIds),
+                startTimeIso: new Date(startTime).toISOString(),
+                endTimeIso: new Date(endTime).toISOString(),
+            },
+        });
+    };
+
     const addSchoolPeriod = () => {
         setSchoolPeriods([...schoolPeriods, { day: 'Monday', startTime: '09:00', endTime: '10:00' }]);
     };
@@ -281,7 +317,7 @@ export default function ExportData() {
 
         setLoadingData(true);
         try {
-            const response = await axios.post(`${API_BASE}/export/data`, {
+            const response = await axios.post(`${BASE_URL}/export/data`, {
                 user_ids: Array.from(selectedIds),
                 data_types: Array.from(selectedDataTypes),
                 start_date: new Date(startTime).toISOString(),
@@ -298,6 +334,7 @@ export default function ExportData() {
                 students: apiData.map((student: any) => ({
                     id: student.user_id,
                     name: student.name,
+                    surah_jump_warnings: student.surah_jump_warnings || [],
                     ...student.data
                 })),
                 dateRange: { start: startTime, end: endTime },
@@ -346,6 +383,13 @@ export default function ExportData() {
                     }
                 });
                 
+                // Add warnings column
+                if (student.surah_jump_warnings && student.surah_jump_warnings.length > 0) {
+                    row['⚠️ Warnings'] = '⚠️ ' + student.surah_jump_warnings.join('; ');
+                } else {
+                    row['⚠️ Warnings'] = '';
+                }
+                
                 return row;
             });
 
@@ -356,9 +400,29 @@ export default function ExportData() {
             // Set column widths
             const colWidths = [
                 { wch: 20 }, // Student Name column
-                ...loadedData.dataTypes.map(() => ({ wch: 15 })) // Data type columns
+                ...loadedData.dataTypes.map(() => ({ wch: 15 })), // Data type columns
+                { wch: 50 } // Warnings column
             ];
             ws['!cols'] = colWidths;
+            
+            // Add cell styling for warnings
+            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+            const warningsColIndex = range.e.c; // Last column (warnings)
+            
+            // Style warning cells with yellow background
+            for (let row = 1; row <= range.e.r; row++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: row, c: warningsColIndex });
+                const cell = ws[cellAddress];
+                
+                if (cell && cell.v && cell.v !== '') {
+                    // Add cell style for yellow background (note: basic xlsx may not support all styling)
+                    if (!cell.s) cell.s = {};
+                    cell.s = {
+                        fill: { fgColor: { rgb: 'FFFF00' } }, // Yellow background
+                        font: { bold: true }
+                    };
+                }
+            }
 
             // Add worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, 'Student Data');
@@ -493,7 +557,7 @@ export default function ExportData() {
                                             </AccordionButton>
                                             <AccordionPanel pb={4}>
                                                 <Accordion allowMultiple>
-                                                    {Object.entries(groups).map(([grp, users]) => (
+                                                    {Object.entries(groups).sort(([a], [b]) => compareGroups(a, b)).map(([grp, users]) => (
                                                         <AccordionItem key={grp} border="none">
                                                             <AccordionButton 
                                                                 _hover={{ bg: "green.50" }}
@@ -547,11 +611,22 @@ export default function ExportData() {
                             border="1px solid"
                             borderColor="purple.200"
                         >
-                            <Heading size="md" mb={4} color="purple.700">
-                                📋 Select Data Types
-                            </Heading>
+                            <HStack justify="space-between" align="center" mb={4}>
+                                <Heading size="md" color="purple.700">
+                                    📋 Select Data Types
+                                </Heading>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    colorScheme="purple"
+                                    onClick={() => setShowAdvancedDataTypes(!showAdvancedDataTypes)}
+                                >
+                                    {showAdvancedDataTypes ? 'Hide' : 'Show'} Advanced
+                                </Button>
+                            </HStack>
+
                             <VStack align="stretch" spacing={3}>
-                                {DATA_TYPES.map((dataType) => (
+                                {DATA_TYPES.filter((dt: any) => !dt.isAdvanced).map((dataType: any) => (
                                     <HStack key={dataType.id}>
                                         <Checkbox 
                                             isChecked={selectedDataTypes.has(dataType.id)} 
@@ -565,6 +640,45 @@ export default function ExportData() {
                                     </HStack>
                                 ))}
                             </VStack>
+
+                            {showAdvancedDataTypes && (
+                                <Box mt={6} bg="white" borderRadius="md" p={4} border="1px solid" borderColor="purple.200">
+                                    <Heading size="sm" color="purple.700" mb={3}>
+                                        Advanced Data Types
+                                    </Heading>
+                                    <VStack align="stretch" spacing={3}>
+                                        {DATA_TYPES.filter((dt: any) => dt.isAdvanced).map((dataType: any) => (
+                                            <HStack key={dataType.id}>
+                                                <Checkbox 
+                                                    isChecked={selectedDataTypes.has(dataType.id)} 
+                                                    onChange={() => toggleDataType(dataType.id)}
+                                                    colorScheme="purple"
+                                                    size="md"
+                                                />
+                                                <Text fontSize="sm" fontWeight="medium">
+                                                    {dataType.label}
+                                                </Text>
+                                            </HStack>
+                                        ))}
+                                    </VStack>
+
+                                    <Box mt={5} pt={4} borderTop="1px solid" borderColor="purple.100">
+                                        <Button
+                                            colorScheme="teal"
+                                            variant="solid"
+                                            size="sm"
+                                            w="full"
+                                            onClick={handleGeneratePercentageLeaderboard}
+                                            isDisabled={selectedIds.size === 0 || !startTime || !endTime}
+                                        >
+                                            Generate Percentage Leaderboard →
+                                        </Button>
+                                        <Text mt={2} fontSize="xs" color="gray.600">
+                                            Uses New Pages in range ÷ (claimgoal/550) and sorts highest to lowest.
+                                        </Text>
+                                    </Box>
+                                </Box>
+                            )}
                         </Box>
 
                         {/* Advanced Section */}
@@ -590,76 +704,82 @@ export default function ExportData() {
                             </HStack>
                             
                             {showAdvanced && (
-                                <VStack align="stretch" spacing={4}>
-                                    <Text color="orange.600" fontSize="sm">
-                                        Define school periods to separate school vs home time data
-                                    </Text>
-                                    
-                                    <VStack align="stretch" spacing={3}>
-                                        {schoolPeriods.map((period, index) => (
-                                            <HStack key={index} spacing={3}>
-                                                <FormControl maxW="150px">
-                                                    <FormLabel fontSize="sm">Day</FormLabel>
-                                                    <select 
-                                                        value={period.day}
-                                                        onChange={(e) => updateSchoolPeriod(index, 'day', e.target.value)}
-                                                        style={{
-                                                            padding: '8px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #e2e8f0',
-                                                            backgroundColor: 'white'
-                                                        }}
-                                                    >
-                                                        <option value="Monday">Monday</option>
-                                                        <option value="Tuesday">Tuesday</option>
-                                                        <option value="Wednesday">Wednesday</option>
-                                                        <option value="Thursday">Thursday</option>
-                                                        <option value="Friday">Friday</option>
-                                                        <option value="Saturday">Saturday</option>
-                                                        <option value="Sunday">Sunday</option>
-                                                    </select>
-                                                </FormControl>
-                                                
-                                                <FormControl maxW="120px">
-                                                    <FormLabel fontSize="sm">Start</FormLabel>
-                                                    <Input 
-                                                        type="time" 
-                                                        value={period.startTime}
-                                                        onChange={(e) => updateSchoolPeriod(index, 'startTime', e.target.value)}
-                                                        size="sm"
-                                                    />
-                                                </FormControl>
-                                                
-                                                <FormControl maxW="120px">
-                                                    <FormLabel fontSize="sm">End</FormLabel>
-                                                    <Input 
-                                                        type="time" 
-                                                        value={period.endTime}
-                                                        onChange={(e) => updateSchoolPeriod(index, 'endTime', e.target.value)}
-                                                        size="sm"
-                                                    />
-                                                </FormControl>
-                                                
-                                                <Button 
-                                                    size="sm" 
-                                                    colorScheme="red" 
-                                                    variant="outline"
-                                                    onClick={() => removeSchoolPeriod(index)}
-                                                >
-                                                    Remove
-                                                </Button>
-                                            </HStack>
-                                        ))}
+                                <VStack align="stretch" spacing={6}>
+                                    {/* School Periods */}
+                                    <Box>
+                                        <Text color="orange.600" fontSize="sm" mb={3} fontWeight="semibold">
+                                            Define school periods to separate school vs home time data
+                                        </Text>
                                         
-                                        <Button 
-                                            size="sm" 
-                                            colorScheme="orange" 
-                                            variant="outline"
-                                            onClick={addSchoolPeriod}
-                                        >
-                                            + Add School Period
-                                        </Button>
-                                    </VStack>
+                                        <VStack align="stretch" spacing={3}>
+                                            {schoolPeriods.map((period, index) => (
+                                                <HStack key={index} spacing={3}>
+                                                    <FormControl maxW="150px">
+                                                        <FormLabel fontSize="sm">Day</FormLabel>
+                                                        <select 
+                                                            value={period.day}
+                                                            onChange={(e) => updateSchoolPeriod(index, 'day', e.target.value)}
+                                                            style={{
+                                                                padding: '8px',
+                                                                borderRadius: '6px',
+                                                                border: '1px solid #e2e8f0',
+                                                                backgroundColor: 'white'
+                                                            }}
+                                                        >
+                                                            <option value="Monday">Monday</option>
+                                                            <option value="Tuesday">Tuesday</option>
+                                                            <option value="Wednesday">Wednesday</option>
+                                                            <option value="Thursday">Thursday</option>
+                                                            <option value="Friday">Friday</option>
+                                                            <option value="Saturday">Saturday</option>
+                                                            <option value="Sunday">Sunday</option>
+                                                        </select>
+                                                    </FormControl>
+                                                    
+                                                    <FormControl maxW="120px">
+                                                        <FormLabel fontSize="sm">Start</FormLabel>
+                                                        <Input 
+                                                            type="time" 
+                                                            value={period.startTime}
+                                                            onChange={(e) => updateSchoolPeriod(index, 'startTime', e.target.value)}
+                                                            size="sm"
+                                                        />
+                                                    </FormControl>
+                                                    
+                                                    <FormControl maxW="120px">
+                                                        <FormLabel fontSize="sm">End</FormLabel>
+                                                        <Input 
+                                                            type="time" 
+                                                            value={period.endTime}
+                                                            onChange={(e) => updateSchoolPeriod(index, 'endTime', e.target.value)}
+                                                            size="sm"
+                                                        />
+                                                    </FormControl>
+                                                    
+                                                    <Button 
+                                                        size="sm" 
+                                                        colorScheme="red" 
+                                                        variant="outline"
+                                                        onClick={() => removeSchoolPeriod(index)}
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                </HStack>
+                                            ))}
+                                            
+                                            <Button 
+                                                size="sm" 
+                                                colorScheme="orange" 
+                                                variant="outline"
+                                                onClick={addSchoolPeriod}
+                                            >
+                                                + Add School Period
+                                            </Button>
+                                        </VStack>
+                                    </Box>
+
+                                    {/* Nov23-Parent Quran Papers Section */}
+                                    {/* (Advanced data types moved into the purple "Select Data Types" section) */}
                                 </VStack>
                             )}
                         </Box>
@@ -905,5 +1025,13 @@ export default function ExportData() {
                 </Box>
             </Flex>
         </Box>
+    );
+}
+
+export default function ExportData() {
+    return (
+        <AuthGuard>
+            <ExportDataContent />
+        </AuthGuard>
     );
 }
